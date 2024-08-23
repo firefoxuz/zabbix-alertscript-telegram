@@ -170,6 +170,9 @@ zbxGetGraphImage()
 			fi
 			ZABBIX_WEB_AUTH=$(/usr/bin/curl -s -L -d "name=${ZABBIX_USER}&password=${ZABBIX_PASS}&autologin=1&enter=Sign+in" "$ZABBIX_URL_AUTH" 2>/dev/null)
 			ZBX_SESSION_TOKEN=$(curl -s -L -D - "$ZABBIX_URL_AUTH" -H "Content-Type: application/x-www-form-urlencoded" -d "name=${ZABBIX_USER}&password=${ZABBIX_PASS}&autologin=1&enter=Sign+in" -c "" | grep -o 'zbx_session=[^;]*' | cut -d'=' -f2 | head -n 1)
+			if [ "$DEBUG" -eq 1 ]; then
+			  pushToLog "[DEBUG] - Session token ${ZBX_SESSION_TOKEN}"
+			fi
 			if [ -z "$ZABBIX_WEB_AUTH" ]; then
 				pushToLog "[ERROR] - Can't auth in Zabbix web: wrong response"
 				ZABBIX_WEB_AUTH_FAIL=1
