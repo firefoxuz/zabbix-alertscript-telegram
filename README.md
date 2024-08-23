@@ -43,8 +43,6 @@ Direct access to the script disabled for all users excluding `zabbix` user.
 - `ZABBIX_URL` - full url to Zabbix web interface (empty by default);
 - `ZABBIX_USER` - Zabbix user for get graphs (empty by default);
 - `ZABBIX_PASS` - Zabbix user password (empty by default);
-- `ZABBIX_COOKIES_LIFETIME` - Zabbix authorization cookies expiration date (cookies are set for a long time, but they may expire faster than specified. specify the required storage period for which the cookies will definitely not have time to expire; `30` by default);
-- `ZABBIX_COOKIES_PATH` - full path to cookies file (zabbix user must be have write permissions to that file; empty by default; cookies stored in script directory in `zbx_cookies` file if empty value)
 - `MONOSPACED_DESCRIPTION` - add tripple apostrophe in the end of big truncated text/caption (if trigger description as monospaced text and in the end of message template; `0` - disabled, `1` - enabled; disabled by default);
 - `SCRIPT_LOG_PATH` - full path to script logs file (zabbix user must be have write permissions to that file; empty by default; logs stored in script directory in `zbx_tlg_bot.log` file if empty value)
 - `DEBUG` - write debug messages in logs file (`0` - disabled, `1` enabled; disabled by default; disabled graphs deletion from disk on errors if enabled).
