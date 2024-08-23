@@ -14,8 +14,6 @@ GRAPHS_DIR=
 ZABBIX_URL=""
 ZABBIX_USER=""
 ZABBIX_PASS=""
-ZABBIX_COOKIES_LIFETIME=30
-ZABBIX_COOKIES_PATH=
 MONOSPACED_DESCRIPTION=0
 EXTRACT_MENTIONS=0
 SCRIPT_LOG_PATH=
@@ -38,23 +36,6 @@ checkDirPermissions()
 	if [ -w "$1" ] && ! [ -d "$1" ] || ! [ -d "$1" ] && ! [ -w "$(dirname $1)" ] || [ -d "$1" ] && ! [ -w "$1" ] || ! [ -d "$(dirname $1)" ] || [ -f "$1" ]; then
 		echo "Can't write into $1 or it not a directory!"
 		exit 1
-	fi
-}
-
-prepareCookies()
-{
-	if ! [ -f "$ZABBIX_COOKIES_PATH" ]; then
-		touch "$ZABBIX_COOKIES_PATH"
-		chmod 600 "$ZABBIX_COOKIES_PATH"
-	else
-		if ! [ -z "$(grep zbx_session $ZABBIX_COOKIES_PATH)" ]; then
-			COOKIE_EXPIRE_TIME=$(grep zbx_session "$ZABBIX_COOKIES_PATH" | tail -n 1 | awk '{print $5}')
-			COOKIE_MODIFY_TIME=$(date -r "$ZABBIX_COOKIES_PATH" +%s)
-			if [ "$CUR_TIME" -lt "$COOKIE_EXPIRE_TIME" ] && [ "$((CUR_TIME-COOKIE_MODIFY_TIME))" -lt "$ZABBIX_COOKIES_LIFETIME" ]; then
-				ZABBIX_AUTH_NEEDED=0
-			fi
-			pushToLog "[DEBUG] - current time: $CUR_TIME; cookies expire time: $COOKIE_EXPIRE_TIME; cookies modify time: $COOKIE_MODIFY_TIME; cookies lifetime: $ZABBIX_COOKIES_LIFETIME; auth needed: $ZABBIX_AUTH_NEEDED"
-		fi
 	fi
 }
 
@@ -187,7 +168,8 @@ zbxGetGraphImage()
 			if [ "$DEBUG" -eq 1 ]; then
 				pushToLog "[DEBUG] - Cookies expired. Trying re-auth."
 			fi
-			ZABBIX_WEB_AUTH=$(/usr/bin/curl -s -b "$ZABBIX_COOKIES_PATH" -c "$ZABBIX_COOKIES_PATH" -L -d "name=${ZABBIX_USER}&password=${ZABBIX_PASS}&autologin=1&enter=Sign+in" "$ZABBIX_URL_AUTH" 2>/dev/null)
+			ZABBIX_WEB_AUTH=$(/usr/bin/curl -s -L -d "name=${ZABBIX_USER}&password=${ZABBIX_PASS}&autologin=1&enter=Sign+in" "$ZABBIX_URL_AUTH" 2>/dev/null)
+			ZBX_SESSION_TOKEN=$(curl -s -L -D - "$ZABBIX_URL_AUTH" -H "Content-Type: application/x-www-form-urlencoded" -d "name=${ZABBIX_USER}&password=${ZABBIX_PASS}&autologin=1&enter=Sign+in" -c "" | grep -o 'zbx_session=[^;]*' | cut -d'=' -f2 | head -n 1)
 			if [ -z "$ZABBIX_WEB_AUTH" ]; then
 				pushToLog "[ERROR] - Can't auth in Zabbix web: wrong response"
 				ZABBIX_WEB_AUTH_FAIL=1
@@ -205,8 +187,7 @@ zbxGetGraphImage()
 				GRAPH_HEIGHT_PARAM="&height=${GRAPH_HEIGHT}"
 			fi
 
-			/usr/bin/curl -s -b "$ZABBIX_COOKIES_PATH" -c "$ZABBIX_COOKIES_PATH" -L -H 'Content-Type: image/png' -o "$GRAPH_PATH" "${ZABBIX_URL}/chart2.php?graphid=${ZABBIX_GRAPH_ID}&from=now-${GRAPH_PERIOD}&to=now&profileIdx=web.graphs.filter${GRAPH_WIDTH_PARAM}${GRAPH_HEIGHT_PARAM}" > /dev/null 2>/dev/null
-
+			/usr/bin/curl -s -b "zbx_session=${ZBX_SESSION_TOKEN};" -L -H 'Content-Type: image/png' -o "$GRAPH_PATH" "${ZABBIX_URL}/chart2.php?graphid=${ZABBIX_GRAPH_ID}&from=now-${GRAPH_PERIOD}&to=now&profileIdx=web.graphs.filter${GRAPH_WIDTH_PARAM}${GRAPH_HEIGHT_PARAM}" > /dev/null 2>/dev/null
 			if [ -f "$GRAPH_PATH" ]; then
 				GRAPH_PATH_FILEINFO=$(file "$GRAPH_PATH")
 
@@ -367,10 +348,6 @@ if [[ "$TELEGRAM_CHAT_ID" == *:* ]]; then
 	TELEGRAM_CHAT_ID=$(echo "$TELEGRAM_CHAT_ID" | awk -F ':' '{print $1}')
 fi
 
-if [ -z "$ZABBIX_COOKIES_PATH" ]; then
-	ZABBIX_COOKIES_PATH="${CUR_DIR}/zbx_cookies"
-fi
-
 if [ -z "$SCRIPT_LOG_PATH" ]; then
 	SCRIPT_LOG_PATH="${CUR_DIR}/zbx_tlg_bot.log"
 fi
@@ -394,7 +371,6 @@ fi
 
 checkFilePermissions "$SCRIPT_LOG_PATH"
 if [ $GRAPHS -eq 1 ]; then
-	checkFilePermissions "$ZABBIX_COOKIES_PATH"
 	checkDirPermissions "$GRAPHS_DIR"
 fi
 
@@ -418,7 +394,6 @@ if [ $GRAPHS -eq 1 ] && ! [ -z "$GRAPH_DATA" ] && ! [ -z "$ZABBIX_URL" ] && ! [ 
 			zbxApiGetGraphId
 
 			if ! [ -z "$ZABBIX_GRAPH_ID" ]; then
-				prepareCookies
 				prepareGraphsDir
 				zbxGetGraphImage
 			fi
