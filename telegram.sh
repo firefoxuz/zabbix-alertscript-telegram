@@ -11,6 +11,7 @@ TELEGRAM_MESSAGE_LIMIT=4000
 TELEGRAM_CAPTION_LIMIT=900
 GRAPHS=0
 GRAPHS_DIR=
+ZABBIX_URL_AUTH=""
 ZABBIX_URL=""
 ZABBIX_USER=""
 ZABBIX_PASS=""
@@ -337,7 +338,6 @@ CUR_TIME=$(date +%s)
 GRAPH_ISSET=0
 GRAPH_FAIL=0
 ZABBIX_AUTH_NEEDED=1
-ZABBIX_IN_SUBDIR=0
 TELEGRAM_CHAT_ID="$1"
 TELEGRAM_CHAT_THREAD_ID=
 SUBJECT="$2"
@@ -359,18 +359,8 @@ if [ -z "$GRAPHS_DIR" ]; then
 	GRAPHS_DIR="/tmp/zbx_graphs"
 fi
 
-if [[ "$ZABBIX_URL" =~ \/\/.*\/.*\/$ ]]; then
-	ZABBIX_IN_SUBDIR=1
-fi
-
 ZABBIX_URL=$(echo "$ZABBIX_URL" | sed 's/\/$//')
 ZABBIX_API_URL="${ZABBIX_URL}/api_jsonrpc.php"
-
-if [ "$ZABBIX_IN_SUBDIR" -eq 1 ]; then
-	ZABBIX_URL_AUTH="${ZABBIX_URL}/"
-else
-	ZABBIX_URL_AUTH="$ZABBIX_URL"
-fi
 
 checkFilePermissions "$SCRIPT_LOG_PATH"
 if [ $GRAPHS -eq 1 ]; then
